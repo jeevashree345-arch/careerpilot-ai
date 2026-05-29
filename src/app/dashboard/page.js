@@ -237,7 +237,25 @@ export default function DashboardPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
   const [analysis, setAnalysis] = useState(null);
+  const [mentorQuestion, setMentorQuestion] = useState("");
+const [mentorAnswer, setMentorAnswer] = useState("");
+const [mentorLoading, setMentorLoading] = useState(false);
+const [jobDescription, setJobDescription] = useState("");
+const [jdResult, setJdResult] = useState(null);
+const [jdLoading, setJdLoading] = useState(false);
+const [challenge, setChallenge] = useState(null);
+const [challengeLoading, setChallengeLoading] = useState(false);
+const [challengeAnswer, setChallengeAnswer] = useState("");
+const [evaluation, setEvaluation] = useState(null);
+const [evaluating, setEvaluating] = useState(false);
+const [internships, setInternships] = useState([]);
+const [internshipLoading, setInternshipLoading] = useState(false);
+const [learningPath, setLearningPath] =
+  useState(null);
 
+const [loadingPath, setLoadingPath] =
+  useState(false);
+  const [selectedMetric, setSelectedMetric] = useState(null);
   const fallbackScore = useMemo(() => {
     const base =
       track.includes("Data") ? 76 : track.includes("AI") ? 73 : track.includes("Product") ? 78 : 84;
@@ -300,33 +318,26 @@ export default function DashboardPage() {
     ];
   }, [analysis]);
 
-  const recommendedRoles = useMemo(
-    () => {
-      const roles = Array.isArray(analysis?.suggestedCareerRoles) ? analysis.suggestedCareerRoles : null;
-      if (roles?.length) {
-        return roles.slice(0, 4).map((r) => ({
-          role: r?.title ?? "Role",
-          match:
-            r?.fitScore === null || r?.fitScore === undefined || Number.isNaN(Number(r.fitScore))
-              ? 76
-              : Math.max(0, Math.min(100, Math.round(Number(r.fitScore)))),
-          reason: r?.rationale ?? "",
-        }));
-      }
-      return [
-        { role: "Full Stack Engineer", match: 88, reason: "Strong build velocity + project depth" },
-        { role: "Backend Engineer", match: 84, reason: "APIs, data modeling, scalable services" },
-        { role: "Platform / DevOps Intern", match: 79, reason: "Observability + CI/CD roadmap fit" },
-        { role: "AI Product Engineer", match: 75, reason: "Agentic workflows + user impact" },
-      ];
-    },
-    [analysis]
-  );
+  const recommendedRoles = useMemo(() => {
+    if (
+      analysis?.suggestedCareerRoles &&
+      Array.isArray(analysis.suggestedCareerRoles)
+    ) {
+      return analysis.suggestedCareerRoles.map((role) => ({
+        role: role.title,
+        match: role.fitScore||75,
+        reason: role.rationale,
+      }));
+    }
+  
+    return [];
+  }, [analysis]);
   const roadmapData = useMemo(() => {
     return Array.isArray(analysis?.roadmap)
       ? analysis.roadmap
       : [];
   }, [analysis]);
+  const careerPath = analysis?.careerPathDiscovery || null;
   const technicalSkills = useMemo(() => {
     const t = analysis?.technicalSkills;
     if (!t || typeof t !== "object") return null;
@@ -383,7 +394,8 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          resumeText: text,
+          resumeText,
+          jobDescription,
         }),
       });
   
@@ -411,7 +423,217 @@ export default function DashboardPage() {
       setIsAnalyzing(false);
     }
   }
+  async function askMentor() {
+    if (!mentorQuestion.trim()) return;
+  
+    setMentorLoading(true);
+  
+    try {
+      const res = await fetch("/api/mentor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: mentorQuestion,
+        }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.error || "Mentor failed");
+      }
+  
+      setMentorAnswer(data.answer);
+    } catch (error) {
+      console.error(error);
+      setMentorAnswer("Unable to get mentor response.");
+    } finally {
+      setMentorLoading(false);
+    }
+  }
+  async function analyzeJDMatch() {
+    if (!resumeText.trim() || !jobDescription.trim()) {
+      alert("Please provide both resume and job description.");
+      return;
+    }
+  
+    setJdLoading(true);
+  
+    try {
+      const res = await fetch("/api/jd-match", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeText,
+          jobDescription,
+        }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.error || "JD Match failed");
+      }
+  
+      setJdResult(data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      setJdLoading(false);
+    }
+  }
+  async function generateChallenge() {
+    if (!analysis?.careerPathDiscovery?.domain) {
+      alert("Analyze a resume first.");
+      return;
+    }
+  
+    setChallengeLoading(true);
+  
+    try {
+      const res = await fetch("/api/challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          domain: analysis.careerPathDiscovery.domain,
+        }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.error || "Challenge generation failed");
+      }
+  
+      setChallenge(data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      setChallengeLoading(false);
+    }
+  }
 
+  async function evaluateChallenge() {
+    if (!challenge || !challengeAnswer.trim()) {
+      alert("Please answer the challenge first.");
+      return;
+    }
+  
+    setEvaluating(true);
+  
+    try {
+      const res = await fetch("/api/evaluate-challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          challenge: `
+  Title: ${challenge.title}
+  
+  Scenario:
+  ${challenge.scenario}
+  
+  Question:
+  ${challenge.question}
+  `,
+          answer: challengeAnswer,
+        }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(data.error || "Evaluation failed");
+      }
+  
+      setEvaluation(data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    } finally {
+      setEvaluating(false);
+    }
+  }
+  async function getInternships() {
+    if (!analysis) {
+      alert("Analyze a resume first.");
+      return;
+    }
+  
+    setInternshipLoading(true);
+  
+    try {
+      const res = await fetch("/api/internships", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          domain:
+            analysis?.careerPathDiscovery?.domain,
+  
+          skills: [
+            ...(analysis?.technicalSkills?.tools || []),
+            ...(analysis?.technicalSkills?.concepts || [])
+          ]
+        }),
+      });
+  
+      const data = await res.json();
+  
+      setInternships(
+        data.internships || []
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setInternshipLoading(false);
+    }
+  }
+  async function getLearningPath(skill) {
+    try {
+      setLoadingPath(true);
+  
+      const response = await fetch(
+        "/api/learning-path",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            skill,
+            domain:
+              analysis?.careerPathDiscovery?.domain,
+          }),
+        }
+      );
+  
+      const data =
+        await response.json();
+  
+      console.log(
+        "LEARNING PATH:",
+        data
+      );
+  
+      setLearningPath(data);
+  
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingPath(false);
+    }
+  }
   return (
     <main className="relative min-h-screen bg-[#070A12] text-white">
       {/* Ambient background */}
@@ -607,10 +829,78 @@ export default function DashboardPage() {
                       {analyzeError}
                     </div>
                   ) : null}
-                </div>
+                  {/* JD MATCH SECTION */}
+<div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+  <div className="text-xs font-semibold text-white/80">
+    Job Description
+  </div>
 
+  <textarea
+    value={jobDescription}
+    onChange={(e) => setJobDescription(e.target.value)}
+    placeholder="Paste job description here..."
+    className="mt-3 h-32 w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/85 outline-none"
+  />
+
+  <button
+    type="button"
+    onClick={analyzeJDMatch}
+    disabled={jdLoading}
+    className="mt-3 w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 px-4 py-3 text-sm font-semibold text-black"
+  >
+    {jdLoading
+      ? "Analyzing Match..."
+      : "Analyze Resume vs JD"}
+  </button>
+</div>
+
+                </div>
+                {jdResult && (
+  <GlassCard className="p-5">
+    <div className="flex items-center justify-between">
+      <div className="text-sm font-semibold">
+        JD Match Result
+      </div>
+
+      <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+        {jdResult.matchScore}% Match
+      </div>
+    </div>
+
+    <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="text-xs font-semibold text-white/70">
+        Strengths
+      </div>
+
+      <ul className="mt-2 list-disc pl-5 text-sm text-white/80">
+        {(jdResult.strengths || []).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+
+      <div className="mt-4 text-xs font-semibold text-white/70">
+        Missing Skills
+      </div>
+
+      <ul className="mt-2 list-disc pl-5 text-sm text-white/80">
+        {(jdResult.missingSkills || []).map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+
+      <div className="mt-4 text-xs font-semibold text-white/70">
+        Recommendation
+      </div>
+
+      <div className="mt-2 text-sm text-white/80">
+        {jdResult.recommendation}
+      </div>
+    </div>
+  </GlassCard>
+)}
                 {/* Technical skills */}
                 <GlassCard className="p-5">
+                  
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold">Technical Skills</div>
                     <div className="text-[11px] text-white/55">
@@ -683,11 +973,47 @@ export default function DashboardPage() {
               <div className="mt-6 grid gap-6 md:grid-cols-2 md:items-center">
                 <ScoreRing score={score} subtitle="Score / 100" />
                 <div className="space-y-3">
-                  <ProgressRow label="Projects & Impact" value={Math.min(95, score + 6)} tone="emerald" />
-                  <ProgressRow label="Core Fundamentals" value={Math.max(54, score - 8)} tone="cyan" />
-                  <ProgressRow label="System Design" value={Math.max(42, score - 18)} tone="fuchsia" />
-                  <ProgressRow label="Communication" value={Math.max(52, score - 6)} tone="cyan" />
-                </div>
+
+  {[
+    {
+      label: "Projects & Impact",
+      value: Math.min(95, score + 6),
+      tone: "emerald",
+    },
+    {
+      label: "Core Fundamentals",
+      value: Math.max(54, score - 8),
+      tone: "cyan",
+    },
+    {
+      label: "System Design",
+      value: Math.max(42, score - 18),
+      tone: "fuchsia",
+    },
+    {
+      label: "Communication",
+      value: Math.max(52, score - 6),
+      tone: "cyan",
+    },
+  ].map((metric) => (
+
+    <div
+      key={metric.label}
+      onClick={() =>
+        setSelectedMetric(metric.label)
+      }
+      className="cursor-pointer"
+    >
+      <ProgressRow
+        label={metric.label}
+        value={metric.value}
+        tone={metric.tone}
+      />
+    </div>
+
+  ))}
+
+</div>
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -697,6 +1023,281 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
+            {selectedMetric &&
+ analysis?.readinessImprovement && (
+
+  <GlassCard className="p-6">
+
+    <div className="flex items-center justify-between">
+
+      <div>
+        <div className="text-sm font-semibold">
+          Improvement Plan
+        </div>
+
+        <div className="text-xs text-white/60">
+          Skills required to increase your score
+        </div>
+      </div>
+
+      <button
+        onClick={() =>
+          setSelectedMetric(null)
+        }
+        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs"
+      >
+        Close
+      </button>
+
+    </div>
+
+    <div className="mt-5 space-y-3">
+
+      {(selectedMetric === "Projects & Impact"
+        ? analysis.readinessImprovement.projectsImpact
+
+        : selectedMetric === "Core Fundamentals"
+        ? analysis.readinessImprovement.coreFundamentals
+
+        : selectedMetric === "System Design"
+        ? analysis.readinessImprovement.systemDesign
+
+        : analysis.readinessImprovement.communication
+      )?.map((item, index) => (
+
+        <div
+          key={index}
+          className="rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+        >
+          ✓ {item}
+        </div>
+
+      ))}
+
+    </div>
+
+  </GlassCard>
+)}
+            {careerPath && (
+  <GlassCard className="p-6">
+    <div className="text-lg font-semibold">
+      Career Path Discovery
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">Domain</div>
+      <div className="text-lg font-semibold">
+        {careerPath.domain}
+      </div>
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">
+        Primary Career Path
+      </div>
+      <div className="text-lg font-semibold text-cyan-300">
+        {careerPath.primaryPath}
+      </div>
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">
+        Alternative Career Paths
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {(careerPath.alternativePaths || []).map((path, index) => (
+          <span
+            key={index}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm"
+          >
+            {path}
+          </span>
+        ))}
+      </div>
+    </div>
+  </GlassCard>
+)}
+<GlassCard className="p-6">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">
+        AI Skill Challenge
+      </div>
+
+      <div className="text-xs text-white/60">
+        Domain-specific problem solving
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={generateChallenge}
+      disabled={challengeLoading}
+      className="rounded-xl bg-cyan-500 px-3 py-2 text-xs font-semibold text-black"
+    >
+      {challengeLoading
+        ? "Generating..."
+        : "Generate Challenge"}
+    </button>
+  </div>
+
+  {challenge && (
+    <div className="mt-5 space-y-4">
+      <div>
+        <div className="text-lg font-semibold">
+          {challenge.title}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Scenario
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {challenge.scenario}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Question
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {challenge.question}
+        </div>
+      </div>
+      {/* ADD THIS BELOW QUESTION */}
+
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="text-xs text-white/60">
+        Your Answer
+      </div>
+
+      <textarea
+        value={challengeAnswer}
+        onChange={(e) => setChallengeAnswer(e.target.value)}
+        placeholder="Write your solution..."
+        className="mt-3 h-32 w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white"
+      />
+
+      <button
+        type="button"
+        onClick={evaluateChallenge}
+        disabled={evaluating}
+        className="mt-3 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black"
+      >
+        {evaluating
+          ? "Evaluating..."
+          : "Evaluate Answer"}
+      </button>
+    </div>
+
+    {evaluation && (
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-lg font-semibold text-cyan-300">
+          Score: {evaluation.score}/100
+        </div>
+
+        <div className="mt-4">
+          <div className="text-xs text-white/60">
+            Strengths
+          </div>
+
+          <ul className="mt-2 list-disc pl-5 text-sm text-white/80">
+            {(evaluation.strengths || []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-xs text-white/60">
+            Improvements
+          </div>
+
+          <ul className="mt-2 list-disc pl-5 text-sm text-white/80">
+            {(evaluation.improvements || []).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-4 text-sm text-white/80">
+          {evaluation.feedback}
+        </div>
+      </div>
+    )}
+    </div>
+    
+  )}
+</GlassCard>
+<GlassCard className="p-6">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">
+        Internship Recommendations
+      </div>
+
+      <div className="text-xs text-white/60">
+        AI matched opportunities
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={getInternships}
+      disabled={internshipLoading}
+      className="rounded-xl bg-fuchsia-500 px-3 py-2 text-xs font-semibold text-black"
+    >
+      {internshipLoading
+        ? "Loading..."
+        : "Find Internships"}
+    </button>
+  </div>
+
+  {internships.length > 0 && (
+    <div className="mt-5 space-y-3">
+      {internships.map((item, index) => (
+        <div
+          key={index}
+          className="rounded-2xl border border-white/10 bg-black/20 p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+  <div className="min-w-0">
+    <div className="text-sm font-semibold">
+      {item.role}
+    </div>
+
+    <div className="mt-1 text-xs text-cyan-300">
+      {item.company}
+    </div>
+  </div>
+
+  <a
+    href={item.applyLink}
+    target="_blank"
+    rel="noreferrer"
+    className="rounded-xl bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 px-3 py-2 text-xs font-semibold text-black"
+  >
+    Apply Now
+  </a>
+</div>
+
+<div className="mt-3 text-sm text-white/75">
+  {item.whyMatch}
+</div>
+
+<div className="mt-2 text-xs text-white/50 break-all">
+  {item.applyLink}
+</div>
+        </div>
+      ))}
+    </div>
+  )}
+</GlassCard>
             {/* Skill gap analysis */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">
@@ -730,26 +1331,34 @@ export default function DashboardPage() {
                     />
                     <div className="relative">
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold">{g.name}</div>
-                          <div className="mt-1 text-xs text-white/60">
-                            Priority:{" "}
-                            <span className="text-white/80">
-                              {String(g.impact).toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        {typeof g.confidence === "number" ? (
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-right">
-                            <div className="text-[10px] text-white/60">Confidence</div>
-                            <div className="text-sm font-semibold">{g.confidence}%</div>
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-right">
-                            <div className="text-[10px] text-white/60">Confidence</div>
-                            <div className="text-sm font-semibold">—</div>
-                          </div>
-                        )}
+                      <div>
+  <button
+    onClick={() => getLearningPath(g.name)}
+    className="text-left text-sm font-semibold hover:text-cyan-300 transition"
+  >
+    {g.name}
+  </button>
+
+  <div className="mt-1 text-xs text-white/60">
+    Priority:{" "}
+    <span className="text-white/80">
+      {String(g.impact).toUpperCase()}
+    </span>
+  </div>
+</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-right">
+  <div className="text-[10px] text-white/60">Confidence</div>
+
+  <div className="text-sm font-semibold">
+    {typeof g.confidence === "number"
+      ? `${g.confidence}%`
+      : g.impact === "HIGH"
+      ? "95%"
+      : g.impact === "MEDIUM"
+      ? "80%"
+      : "65%"}
+  </div>
+</div>
                       </div>
                       <div className="mt-3 text-sm text-white/70">{g.action}</div>
                       <div className="mt-3 h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
@@ -763,7 +1372,150 @@ export default function DashboardPage() {
                 ))}
               </div>
             </GlassCard>
+            {learningPath && (
+  <GlassCard className="p-6">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">
+        Learning Path Explorer
+      </div>
 
+      <div className="text-xs text-white/60">
+        AI-generated roadmap for mastering the selected skill
+      </div>
+    </div>
+
+    <button
+      onClick={() => setLearningPath(null)}
+      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+    >
+      Close
+    </button>
+  </div>
+
+  <div className="mt-5 grid gap-4 md:grid-cols-2">
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Description
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.description}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Recommended Courses
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {(learningPath.courses || []).map(
+            (course, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              >
+                <div className="text-sm font-semibold">
+                  {course.title}
+                </div>
+
+                <div className="text-xs text-cyan-300">
+                  {course.provider}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+  <div className="text-xs text-white/60">
+    YouTube Resources
+  </div>
+
+  <div className="mt-3 space-y-2">
+    {(learningPath.youtubeLinks || []).map(
+      (video, index) => (
+        <a
+          key={index}
+          href={video.url}
+          target="_blank"
+          rel="noreferrer"
+          className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
+        >
+          <div className="text-sm font-semibold">
+            {video.title}
+          </div>
+
+          <div className="text-xs text-cyan-300">
+            Open YouTube Resource
+          </div>
+        </a>
+      )
+    )}
+  </div>
+</div>
+<div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+  <div className="text-xs text-white/60">
+    Free Courses
+  </div>
+
+  <div className="mt-3 space-y-2">
+    {(learningPath.freeCourseLinks || []).map(
+      (course, index) => (
+        <a
+          key={index}
+          href={course.url}
+          target="_blank"
+          rel="noreferrer"
+          className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
+        >
+          <div className="text-sm font-semibold">
+            {course.title}
+          </div>
+
+          <div className="text-xs text-emerald-300">
+            Open Course
+          </div>
+        </a>
+      )
+    )}
+  </div>
+</div>
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Mini Project
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.project}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs text-white/60">
+          Checkpoint
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.checkpoint}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+        <div className="text-xs text-cyan-100">
+          Next Skill To Learn
+        </div>
+
+        <div className="mt-2 text-lg font-semibold text-cyan-300">
+          {learningPath.nextSkill}
+        </div>
+      </div>
+
+    </div>
+  </GlassCard>
+)}
             {/* Roadmap cards */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">
@@ -787,7 +1539,10 @@ export default function DashboardPage() {
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {(roadmapData.length
   ? roadmapData.map((item, index) => ({
-      tag: item.week || `Week ${index + 1}`,
+    tag:
+    item.week?.startsWith("Week")
+      ? item.week
+      : `Week ${index + 1}`,
       title: item.goal || "Roadmap Goal",
       desc: Array.isArray(item.tasks)
         ? item.tasks.join(" • ")
@@ -825,11 +1580,11 @@ export default function DashboardPage() {
         tone: "from-cyan-500/18 via-emerald-500/10",
       },
     ]
-).map((r) => (
-                  <div
-                    key={r.title}
-                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4"
-                  >
+).map((r,index) => (
+  <div
+  key={`${r.title}-${index}`}
+  className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4"
+>
                     <div
                       className={[
                         "pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br opacity-70 blur-2xl",
@@ -904,83 +1659,56 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
-            {/* Internship recommendations */}
+            
             <GlassCard className="p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-cyan-200">
-                    <Icon name="bolt" />
-                  </span>
-                  <div>
-                    <div className="text-sm font-semibold">Internship Recommendations</div>
-                    <div className="text-xs text-white/60">Based on your signals</div>
-                  </div>
-                </div>
-                <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                  Hot picks
-                </div>
-              </div>
+  <div className="flex items-center gap-2">
+    <span className="text-cyan-200">
+      <Icon name="spark" />
+    </span>
+    <div>
+      <div className="text-sm font-semibold">
+        AI Mentor
+      </div>
+      <div className="text-xs text-white/60">
+        Ask career-related questions
+      </div>
+    </div>
+  </div>
 
-              <div className="mt-5 space-y-3">
-                {[
-                  {
-                    company: "Nimbus Labs",
-                    title: "Software Engineer Intern",
-                    tags: ["React", "Node", "Testing"],
-                    tone: "from-cyan-500/20",
-                  },
-                  {
-                    company: "Astra Data",
-                    title: "Backend Intern",
-                    tags: ["APIs", "Postgres", "Redis"],
-                    tone: "from-fuchsia-500/20",
-                  },
-                  {
-                    company: "Orbit AI",
-                    title: "AI Product Intern",
-                    tags: ["RAG", "UX", "Metrics"],
-                    tone: "from-emerald-500/20",
-                  },
-                ].map((j) => (
-                  <div
-                    key={j.company}
-                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4"
-                  >
-                    <div
-                      className={[
-                        "pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br opacity-70 blur-2xl",
-                        j.tone,
-                        "to-transparent",
-                      ].join(" ")}
-                    />
-                    <div className="relative">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold">{j.title}</div>
-                          <div className="mt-1 text-xs text-white/60">{j.company}</div>
-                        </div>
-                        <button
-                          type="button"
-                          className="rounded-xl bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 px-3 py-2 text-xs font-semibold text-black"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/60">
-                        {j.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
+  <div className="mt-4">
+    <textarea
+      value={mentorQuestion}
+      onChange={(e) =>
+        setMentorQuestion(e.target.value)
+      }
+      placeholder="What skills should I learn for AI internships?"
+      className="h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none"
+    />
+  </div>
+
+  <button
+    type="button"
+    onClick={askMentor}
+    disabled={mentorLoading}
+    className="mt-3 w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-emerald-500 px-4 py-3 text-sm font-semibold text-black"
+  >
+    {mentorLoading
+      ? "Thinking..."
+      : "Ask AI Mentor"}
+  </button>
+
+  {mentorAnswer && (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="text-xs text-white/60">
+        Mentor Response
+      </div>
+
+      <div className="mt-2 text-sm text-white/80 whitespace-pre-wrap">
+        {mentorAnswer}
+      </div>
+    </div>
+  )}
+</GlassCard>
           </div>
         </div>
       </section>
