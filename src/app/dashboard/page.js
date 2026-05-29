@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 function Icon({ name, className = "h-5 w-5" }) {
   const common = { className, fill: "none", viewBox: "0 0 24 24" };
@@ -256,6 +256,33 @@ const [learningPath, setLearningPath] =
 const [loadingPath, setLoadingPath] =
   useState(false);
   const [selectedMetric, setSelectedMetric] = useState(null);
+  const [careerRoadmap, setCareerRoadmap] =
+  useState(null);
+
+const [loadingRoadmap, setLoadingRoadmap] =
+  useState(false);
+  const [user, setUser] = useState(null);
+
+useEffect(() => {
+
+  const storedUser =
+    localStorage.getItem(
+      "careerpilot_user"
+    );
+
+  if (!storedUser) {
+
+    window.location.href =
+      "/login";
+
+    return;
+  }
+
+  setUser(
+    JSON.parse(storedUser)
+  );
+
+}, []);
   const fallbackScore = useMemo(() => {
     const base =
       track.includes("Data") ? 76 : track.includes("AI") ? 73 : track.includes("Product") ? 78 : 84;
@@ -412,7 +439,8 @@ const [loadingPath, setLoadingPath] =
   
       // Save AI response
       setAnalysis(data);
-  
+      // Generate roadmap immediately
+generateCareerRoadmap(data);
     } catch (error) {
       console.error(error);
   
@@ -634,6 +662,58 @@ const [loadingPath, setLoadingPath] =
       setLoadingPath(false);
     }
   }
+  async function generateCareerRoadmap(aiData) {
+
+    try {
+  
+      setLoadingRoadmap(true);
+  
+      const response =
+        await fetch(
+          "/api/career-roadmap",
+          {
+            method: "POST",
+  
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+  
+            body: JSON.stringify({
+
+              domain:
+                aiData?.careerPathDiscovery?.domain,
+            
+              careerPath:
+                aiData?.careerPathDiscovery?.primaryPath,
+            
+              missingSkills:
+                aiData?.missingSkills?.map(
+                  (s) => s.skill
+                ),
+            }),
+          }
+        );
+  
+      const data =
+        await response.json();
+  
+      console.log(
+        "CAREER ROADMAP",
+        data
+      );
+  
+      setCareerRoadmap(data);
+  
+    } catch (error) {
+  
+      console.error(error);
+  
+    } finally {
+  
+      setLoadingRoadmap(false);
+    }
+  }
   return (
     <main className="relative min-h-screen bg-[#070A12] text-white">
       {/* Ambient background */}
@@ -732,13 +812,38 @@ const [loadingPath, setLoadingPath] =
                     </span>
                   </div>
                   <div>
-                    <div className="text-base font-semibold tracking-tight">Jeevashree</div>
-                    <div className="text-xs text-white/60">Final-year • B.Tech • India</div>
+                  <div className="text-lg font-semibold">
+  {user?.name || "Guest User"}
+</div>
+
+<div className="text-sm text-white/60">
+  {user?.profile || "Student"}
+</div>
                   </div>
                 </div>
-                <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                  Active
-                </div>
+                <div className="flex items-center gap-3">
+
+  <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+    Active
+  </div>
+
+  <button
+    onClick={() => {
+
+      localStorage.removeItem(
+        "careerpilot_user"
+      );
+
+      window.location.href =
+        "/login";
+
+    }}
+    className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20"
+  >
+    Logout
+  </button>
+
+</div>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
@@ -1514,6 +1619,66 @@ const [loadingPath, setLoadingPath] =
       </div>
 
     </div>
+  </GlassCard>
+)}
+{careerRoadmap?.nodes?.length > 0 && (
+  <GlassCard className="p-6">
+
+    <div className="flex items-center justify-between">
+      <div>
+        <div className="text-sm font-semibold">
+          Career Journey Roadmap
+        </div>
+
+        <div className="text-xs text-white/60">
+          AI generated roadmap for your target career
+        </div>
+      </div>
+
+      <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+        {careerRoadmap.title}
+      </div>
+    </div>
+
+    <div className="mt-8 flex flex-col items-center">
+
+      {careerRoadmap.nodes.map((node, index) => (
+
+        <div
+          key={index}
+          className="flex flex-col items-center"
+        >
+
+<button
+  onClick={() =>
+    getLearningPath(node.name)
+  }
+  className="rounded-2xl border border-white/10 bg-black/30 px-6 py-4 transition hover:border-cyan-400/40 hover:bg-cyan-400/10"
+>
+  <div className="text-sm font-semibold">
+    {node.name}
+  </div>
+
+  <div className="mt-1 text-xs text-white/60">
+    {node.description}
+  </div>
+
+  <div className="mt-2 text-[10px] text-cyan-300">
+    {node.level}
+  </div>
+</button>
+
+          {index !==
+            careerRoadmap.nodes.length - 1 && (
+            <div className="h-12 w-px bg-gradient-to-b from-cyan-500 to-fuchsia-500" />
+          )}
+
+        </div>
+
+      ))}
+
+    </div>
+
   </GlassCard>
 )}
             {/* Roadmap cards */}

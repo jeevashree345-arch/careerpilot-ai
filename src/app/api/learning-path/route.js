@@ -38,7 +38,8 @@ Return ONLY JSON:
   "courses": [
     {
       "title": "",
-      "provider": ""
+      "provider": "",
+      "url": ""
     }
   ],
 
@@ -54,7 +55,7 @@ Return ONLY JSON:
     "title": "",
     "url": ""
   }
-]
+],
   "project": "",
 
   "checkpoint": "",

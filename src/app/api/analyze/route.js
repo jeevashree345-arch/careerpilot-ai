@@ -265,12 +265,19 @@ Do not leave any readinessImprovement array empty.
       ],
     });
 
-    // AI raw response
-    const text =
-      completion.choices?.[0]?.message?.content || "{}";
+    let text =
+  completion.choices?.[0]?.message?.content || "{}";
 
-    // Parse AI JSON
-    let analysis;
+console.log("RAW AI RESPONSE:");
+console.log(text);
+
+text = text
+  .replace(/```json/g, "")
+  .replace(/```/g, "")
+  .trim();
+
+// Parse AI JSON
+let analysis;
 
     try {
       analysis = JSON.parse(text);
