@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Landing page motion + glow helpers (Tailwind-friendly) */
+@keyframes cp-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes cp-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes cp-shimmer {
+  0% {
+    transform: translateX(-40%) skewX(-20deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(140%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+.cp-animate-float {
+  animation: cp-float 7s ease-in-out infinite;
+}
+
+.cp-animate-gradient {
+  background-size: 220% 220%;
+  animation: cp-gradient 14s ease infinite;
+}
+
+.cp-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.cp-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -30% -10%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.16),
+    transparent
+  );
+  width: 40%;
+  filter: blur(0.2px);
+  animation: cp-shimmer 2.8s ease-in-out infinite;
+}
