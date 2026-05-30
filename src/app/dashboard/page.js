@@ -169,7 +169,7 @@ function ProgressRow({ label, value, tone = "cyan" }) {
         ? "from-fuchsia-500/70 via-fuchsia-300/40"
         : "from-cyan-500/70 via-cyan-300/40";
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center justify-between gap-3 text-sm">
         <div className="font-semibold text-white">{label}</div>
         <div className="text-white/70">{value}%</div>
@@ -267,6 +267,21 @@ const [loadingRoadmap, setLoadingRoadmap] =
     analysisHistory,
     setAnalysisHistory
   ] = useState([]);
+
+  const [
+    totalAnalyses,
+    setTotalAnalyses
+  ] = useState(0);
+  
+  const [
+    totalRoadmaps,
+    setTotalRoadmaps
+  ] = useState(0);
+  
+  const [
+    latestScore,
+    setLatestScore
+  ] = useState(0);
   async function loadHistory(
     email
   ) {
@@ -293,6 +308,50 @@ const [loadingRoadmap, setLoadingRoadmap] =
       );
     }
   }
+  async function loadStats(
+    email
+  ) {
+  
+    const {
+      data: analyses
+    } =
+      await supabase
+        .from("analyses")
+        .select("*")
+        .eq(
+          "user_email",
+          email
+        );
+  
+    const {
+      data: roadmaps
+    } =
+      await supabase
+        .from("roadmaps")
+        .select("*")
+        .eq(
+          "user_email",
+          email
+        );
+  
+    setTotalAnalyses(
+      analyses?.length || 0
+    );
+  
+    setTotalRoadmaps(
+      roadmaps?.length || 0
+    );
+  
+    if (
+      analyses?.length > 0
+    ) {
+  
+      setLatestScore(
+        analyses[0]
+          .career_score
+      );
+    }
+  }
 useEffect(() => {
 
   const storedUser =
@@ -314,6 +373,10 @@ useEffect(() => {
   setUser(user);
 
   loadHistory(
+    user.email
+  );
+
+  loadStats(
     user.email
   );
 
@@ -970,6 +1033,41 @@ generateCareerRoadmap(data);
 </div>
 
 </GlassCard>
+<GlassCard className="p-6">
+
+  <div className="text-lg font-semibold">
+    CareerPilot Stats
+  </div>
+
+  <div className="mt-4 space-y-3">
+
+    <div>
+      Analyses Completed:
+      {" "}
+      {totalAnalyses}
+    </div>
+
+    <div>
+      Roadmaps Generated:
+      {" "}
+      {totalRoadmaps}
+    </div>
+
+    <div>
+      Latest Career Score:
+      {" "}
+      {latestScore}
+    </div>
+
+    <div>
+      Profile:
+      {" "}
+      {user?.profile}
+    </div>
+
+  </div>
+
+</GlassCard>
             {/* Resume + AI analysis */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">
@@ -986,7 +1084,7 @@ generateCareerRoadmap(data);
               </div>
 
               <div className="mt-4 space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-xs font-semibold text-white/80">Resume text</div>
                     <div className="text-[11px] text-white/55">
@@ -1127,7 +1225,7 @@ generateCareerRoadmap(data);
                         { k: "Tools", v: technicalSkills.tools, tone: "from-emerald-500/18" },
                         { k: "Concepts", v: technicalSkills.concepts, tone: "from-cyan-500/14" },
                       ].map((row) => (
-                        <div key={row.k} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div key={row.k} className="rounded-2xl border border-white/10 bg-black/20 p-5">
                           <div className="flex items-center justify-between">
                             <div className="text-xs font-semibold text-white/80">{row.k}</div>
                             <div className="text-[11px] text-white/55">
@@ -1289,46 +1387,7 @@ generateCareerRoadmap(data);
 
   </GlassCard>
 )}
-            {careerPath && (
-  <GlassCard className="p-6">
-    <div className="text-lg font-semibold">
-      Career Path Discovery
-    </div>
-
-    <div className="mt-4">
-      <div className="text-xs text-white/60">Domain</div>
-      <div className="text-lg font-semibold">
-        {careerPath.domain}
-      </div>
-    </div>
-
-    <div className="mt-4">
-      <div className="text-xs text-white/60">
-        Primary Career Path
-      </div>
-      <div className="text-lg font-semibold text-cyan-300">
-        {careerPath.primaryPath}
-      </div>
-    </div>
-
-    <div className="mt-4">
-      <div className="text-xs text-white/60">
-        Alternative Career Paths
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-2">
-        {(careerPath.alternativePaths || []).map((path, index) => (
-          <span
-            key={index}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm"
-          >
-            {path}
-          </span>
-        ))}
-      </div>
-    </div>
-  </GlassCard>
-)}
+            
 <GlassCard className="p-6">
   <div className="flex items-center justify-between">
     <div>
@@ -1361,7 +1420,7 @@ generateCareerRoadmap(data);
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="text-xs text-white/60">
           Scenario
         </div>
@@ -1371,7 +1430,7 @@ generateCareerRoadmap(data);
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="text-xs text-white/60">
           Question
         </div>
@@ -1382,7 +1441,7 @@ generateCareerRoadmap(data);
       </div>
       {/* ADD THIS BELOW QUESTION */}
 
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
       <div className="text-xs text-white/60">
         Your Answer
       </div>
@@ -1407,7 +1466,7 @@ generateCareerRoadmap(data);
     </div>
 
     {evaluation && (
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="text-lg font-semibold text-cyan-300">
           Score: {evaluation.score}/100
         </div>
@@ -1474,7 +1533,7 @@ generateCareerRoadmap(data);
       {internships.map((item, index) => (
         <div
           key={index}
-          className="rounded-2xl border border-white/10 bg-black/20 p-4"
+          className="rounded-2xl border border-white/10 bg-black/20 p-5"
         >
           <div className="flex items-start justify-between gap-3">
   <div className="min-w-0">
@@ -1583,150 +1642,7 @@ generateCareerRoadmap(data);
                 ))}
               </div>
             </GlassCard>
-            {learningPath && (
-  <GlassCard className="p-6">
-  <div className="flex items-center justify-between">
-    <div>
-      <div className="text-sm font-semibold">
-        Learning Path Explorer
-      </div>
-
-      <div className="text-xs text-white/60">
-        AI-generated roadmap for mastering the selected skill
-      </div>
-    </div>
-
-    <button
-      onClick={() => setLearningPath(null)}
-      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
-    >
-      Close
-    </button>
-  </div>
-
-  <div className="mt-5 grid gap-4 md:grid-cols-2">
-
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs text-white/60">
-          Description
-        </div>
-
-        <div className="mt-2 text-sm text-white/80">
-          {learningPath.description}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs text-white/60">
-          Recommended Courses
-        </div>
-
-        <div className="mt-3 space-y-2">
-          {(learningPath.courses || []).map(
-            (course, index) => (
-              <div
-                key={index}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-              >
-                <div className="text-sm font-semibold">
-                  {course.title}
-                </div>
-
-                <div className="text-xs text-cyan-300">
-                  {course.provider}
-                </div>
-              </div>
-            )
-          )}
-        </div>
-      </div>
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-  <div className="text-xs text-white/60">
-    YouTube Resources
-  </div>
-
-  <div className="mt-3 space-y-2">
-    {(learningPath.youtubeLinks || []).map(
-      (video, index) => (
-        <a
-          key={index}
-          href={video.url}
-          target="_blank"
-          rel="noreferrer"
-          className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
-        >
-          <div className="text-sm font-semibold">
-            {video.title}
-          </div>
-
-          <div className="text-xs text-cyan-300">
-            Open YouTube Resource
-          </div>
-        </a>
-      )
-    )}
-  </div>
-</div>
-<div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-  <div className="text-xs text-white/60">
-    Free Courses
-  </div>
-
-  <div className="mt-3 space-y-2">
-    {(learningPath.freeCourseLinks || []).map(
-      (course, index) => (
-        <a
-          key={index}
-          href={course.url}
-          target="_blank"
-          rel="noreferrer"
-          className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
-        >
-          <div className="text-sm font-semibold">
-            {course.title}
-          </div>
-
-          <div className="text-xs text-emerald-300">
-            Open Course
-          </div>
-        </a>
-      )
-    )}
-  </div>
-</div>
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs text-white/60">
-          Mini Project
-        </div>
-
-        <div className="mt-2 text-sm text-white/80">
-          {learningPath.project}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs text-white/60">
-          Checkpoint
-        </div>
-
-        <div className="mt-2 text-sm text-white/80">
-          {learningPath.checkpoint}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
-        <div className="text-xs text-cyan-100">
-          Next Skill To Learn
-        </div>
-
-        <div className="mt-2 text-lg font-semibold text-cyan-300">
-          {learningPath.nextSkill}
-        </div>
-      </div>
-
-    </div>
-  </GlassCard>
-)}
+            
 {careerRoadmap?.nodes?.length > 0 && (
   <GlassCard className="p-6">
 
@@ -1886,6 +1802,46 @@ generateCareerRoadmap(data);
           {/* Right rail */}
           <div className="space-y-4 lg:col-span-3">
             {/* Recommended roles */}
+            {careerPath && (
+  <GlassCard className="p-6">
+    <div className="text-lg font-semibold">
+      Career Path Discovery
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">Domain</div>
+      <div className="text-lg font-semibold">
+        {careerPath.domain}
+      </div>
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">
+        Primary Career Path
+      </div>
+      <div className="text-lg font-semibold text-cyan-300">
+        {careerPath.primaryPath}
+      </div>
+    </div>
+
+    <div className="mt-4">
+      <div className="text-xs text-white/60">
+        Alternative Career Paths
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {(careerPath.alternativePaths || []).map((path, index) => (
+          <span
+            key={index}
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm"
+          >
+            {path}
+          </span>
+        ))}
+      </div>
+    </div>
+  </GlassCard>
+)}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
@@ -1906,7 +1862,7 @@ generateCareerRoadmap(data);
 
               <div className="mt-5 space-y-3">
                 {recommendedRoles.map((rr) => (
-                  <div key={rr.role} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div key={rr.role} className="rounded-2xl border border-white/10 bg-black/20 p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">{rr.role}</div>
@@ -1980,6 +1936,164 @@ generateCareerRoadmap(data);
     </div>
   )}
 </GlassCard>
+{learningPath && (
+  <GlassCard className="p-6">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-semibold">
+        Learning Path Explorer
+      </div>
+
+      <div className="text-xs text-white/60">
+        AI-generated roadmap for mastering the selected skill
+      </div>
+    </div>
+
+    <button
+      onClick={() => setLearningPath(null)}
+      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+    >
+      Close
+    </button>
+  </div>
+
+  <div className="mt-5 space-y-4">
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="text-xs text-white/60">
+          Description
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.description}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="text-xs text-white/60">
+          Recommended Courses
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {(learningPath.courses || []).map(
+            (course, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              >
+                <div className="text-sm font-semibold break-words">
+                  {course.title}
+                </div>
+
+                <div className="text-xs text-cyan-300">
+                  {course.provider}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+  <div className="text-xs text-white/60">
+    YouTube Resources
+  </div>
+
+  <div className="mt-3 space-y-2">
+    {(learningPath.youtubeLinks || []).map(
+      (video, index) => (
+        <a
+  key={index}
+  href={
+    video.url
+      ? video.url
+      : `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          video.title
+        )}`
+  }
+  target="_blank"
+  rel="noreferrer"
+  className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
+>
+          <div className="text-sm font-semibold">
+            {video.title}
+          </div>
+
+          <div className="text-xs text-cyan-300">
+            Open YouTube Resource
+          </div>
+        </a>
+      )
+    )}
+  </div>
+</div>
+<div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+  <div className="text-xs text-white/60">
+    Free Courses
+  </div>
+
+  <div className="mt-3 space-y-2">
+    {(learningPath.freeCourseLinks || []).map(
+      (course, index) => (
+        <a
+        key={`${course.title}-${index}`}
+  href={
+    course.url
+      ? course.url
+      : `https://www.google.com/search?q=${encodeURIComponent(
+          course.title +
+          " " +
+          course.provider
+        )}`
+  }
+  target="_blank"
+  rel="noreferrer"
+  className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
+>
+          <div className="text-sm font-semibold">
+            {course.title}
+          </div>
+
+          <div className="text-xs text-emerald-300">
+            Open Course
+          </div>
+        </a>
+      )
+    )}
+  </div>
+</div>
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="text-xs text-white/60">
+          Mini Project
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.project}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="text-xs text-white/60">
+          Checkpoint
+        </div>
+
+        <div className="mt-2 text-sm text-white/80">
+          {learningPath.checkpoint}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+        <div className="text-xs text-cyan-100">
+          Next Skill To Learn
+        </div>
+
+        <div className="mt-2 text-lg font-semibold text-cyan-300">
+          {learningPath.nextSkill}
+        </div>
+      </div>
+
+    </div>
+  </GlassCard>
+)}
           </div>
         </div>
       </section>

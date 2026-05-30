@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { supabase } from "@/lib/supabase";
 export default function RoadmapPage() {
 
     const [career, setCareer] =
@@ -15,6 +15,11 @@ export default function RoadmapPage() {
   
   const [learningPath, setLearningPath] =
     useState(null);
+
+  const [
+        roadmapHistory,
+        setRoadmapHistory
+      ] = useState([]);
     useEffect(() => {
 
         const storedUser =
@@ -26,9 +31,43 @@ export default function RoadmapPage() {
     
           window.location.href =
             "/login";
+            return;
         }
+        const user =
+        JSON.parse(
+          storedUser
+        );
     
+      loadRoadmaps(
+        user.email
+      );
       }, []);
+      async function loadRoadmaps(
+        email
+      ) {
+      
+        const { data, error } =
+          await supabase
+            .from("roadmaps")
+            .select("*")
+            .eq(
+              "user_email",
+              email
+            )
+            .order(
+              "id",
+              {
+                ascending: false
+              }
+            );
+      
+        if (!error) {
+      
+          setRoadmapHistory(
+            data || []
+          );
+        }
+      }
     async function generateRoadmap() {
         console.log("Generate Roadmap Clicked");
         try {
@@ -66,7 +105,32 @@ export default function RoadmapPage() {
           );
       
           setRoadmap(data);
-      
+          const loggedInUser =
+      JSON.parse(
+        localStorage.getItem(
+          "loggedInUser"
+        )
+      );
+
+    const { error } =
+      await supabase
+        .from("roadmaps")
+        .insert([
+          {
+            user_email:
+              loggedInUser.email,
+
+            career,
+
+            roadmap_json:
+              data,
+          }
+        ]);
+
+    console.log(
+      "ROADMAP SAVE ERROR:",
+      error
+    );
         } catch (error) {
       
           console.error(error);
@@ -213,6 +277,53 @@ export default function RoadmapPage() {
               </div>
       
             )}
+            <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+
+<h2 className="text-2xl font-bold">
+  My Roadmaps
+</h2>
+
+<div className="mt-4 space-y-3">
+
+  {roadmapHistory.length === 0 ? (
+
+    <div className="text-white/60">
+      No saved roadmaps.
+    </div>
+
+  ) : (
+
+    roadmapHistory.map(
+      (item) => (
+
+        <div
+          key={item.id}
+          onClick={() =>
+            setRoadmap(
+              item.roadmap_json
+            )
+          }
+          className="cursor-pointer rounded-xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
+        >
+
+          <div className="font-semibold">
+            {item.career}
+          </div>
+
+          <div className="text-xs text-white/60">
+            Click to reopen roadmap
+          </div>
+
+        </div>
+
+      )
+    )
+
+  )}
+
+</div>
+
+</div>
       
             {/* Learning Path */}
 {learningPath && (
@@ -285,7 +396,15 @@ export default function RoadmapPage() {
             className="rounded-2xl border border-white/10 bg-black/20 p-4"
           >
             <a
-  href={course.url}
+  href={
+    course.url
+      ? course.url
+      : `https://www.google.com/search?q=${encodeURIComponent(
+          course.title +
+          " " +
+          course.provider
+        )}`
+  }
   target="_blank"
   rel="noreferrer"
   className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
@@ -321,9 +440,15 @@ export default function RoadmapPage() {
       {(learningPath.youtubeLinks || []).map(
         (video, index) => (
 
-          <a
+            <a
             key={index}
-            href={video.url}
+            href={
+              video.url
+                ? video.url
+                : `https://www.youtube.com/results?search_query=${encodeURIComponent(
+                    video.title
+                  )}`
+            }
             target="_blank"
             rel="noreferrer"
             className="block rounded-2xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
