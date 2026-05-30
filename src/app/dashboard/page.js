@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-
+import { supabase } from "@/lib/supabase";
 function Icon({ name, className = "h-5 w-5" }) {
   const common = { className, fill: "none", viewBox: "0 0 24 24" };
   switch (name) {
@@ -263,11 +263,41 @@ const [loadingRoadmap, setLoadingRoadmap] =
   useState(false);
   const [user, setUser] = useState(null);
 
+  const [
+    analysisHistory,
+    setAnalysisHistory
+  ] = useState([]);
+  async function loadHistory(
+    email
+  ) {
+  
+    const { data, error } =
+      await supabase
+        .from("analyses")
+        .select("*")
+        .eq(
+          "user_email",
+          email
+        )
+        .order(
+          "id",
+          {
+            ascending: false
+          }
+        );
+  
+    if (!error) {
+  
+      setAnalysisHistory(
+        data || []
+      );
+    }
+  }
 useEffect(() => {
 
   const storedUser =
     localStorage.getItem(
-      "careerpilot_user"
+      "loggedInUser"
     );
 
   if (!storedUser) {
@@ -278,8 +308,13 @@ useEffect(() => {
     return;
   }
 
-  setUser(
-    JSON.parse(storedUser)
+  const user =
+    JSON.parse(storedUser);
+
+  setUser(user);
+
+  loadHistory(
+    user.email
   );
 
 }, []);
@@ -439,6 +474,33 @@ useEffect(() => {
   
       // Save AI response
       setAnalysis(data);
+      const loggedInUser =
+  JSON.parse(
+    localStorage.getItem(
+      "loggedInUser"
+    )
+  );
+
+await supabase
+  .from("analyses")
+  .insert([
+    {
+      user_email:
+        loggedInUser.email,
+
+      resume_name:
+        resumeName || "Resume",
+
+      career_score:
+        data.careerReadinessScore,
+
+      summary:
+        data.summary,
+
+      analysis_json:
+        data,
+    }
+  ]);
       // Generate roadmap immediately
 generateCareerRoadmap(data);
     } catch (error) {
@@ -831,7 +893,7 @@ generateCareerRoadmap(data);
     onClick={() => {
 
       localStorage.removeItem(
-        "careerpilot_user"
+        "loggedInUser"
       );
 
       window.location.href =
@@ -863,7 +925,51 @@ generateCareerRoadmap(data);
                 </div>
               </div>
             </GlassCard>
+            <GlassCard className="p-6">
 
+<div className="text-lg font-semibold">
+  Analysis History
+</div>
+
+<div className="mt-4 space-y-3">
+
+  {analysisHistory.length === 0 ? (
+
+    <div className="text-sm text-white/60">
+      No analyses found.
+    </div>
+
+  ) : (
+
+    analysisHistory.map((item) => (
+
+      <div
+  key={item.id}
+  onClick={() =>
+    setAnalysis(
+      item.analysis_json
+    )
+  }
+  className="cursor-pointer rounded-xl border border-white/10 bg-black/20 p-4 hover:border-cyan-400"
+>
+
+        <div className="font-medium">
+          {item.resume_name}
+        </div>
+
+        <div className="text-sm text-cyan-300">
+          Score: {item.career_score}
+        </div>
+
+      </div>
+
+    ))
+
+  )}
+
+</div>
+
+</GlassCard>
             {/* Resume + AI analysis */}
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">

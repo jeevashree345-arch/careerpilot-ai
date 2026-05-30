@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { supabase } from "@/lib/supabase";
 export default function RegisterPage() {
 
   const router = useRouter();
@@ -19,26 +19,52 @@ export default function RegisterPage() {
   const [profile, setProfile] =
     useState("Student");
 
-  function handleRegister() {
+    async function handleRegister() {
 
-    const user = {
-      name,
-      email,
-      password,
-      profile,
-    };
+        try {
+            console.log({
+                name,
+                email,
+                password,
+                profile,
+              });
+          const { error } =
+            await supabase
+              .from("users")
+              .insert([
+                {
+                  name,
+                  email,
+                  password,
+                  profile,
+                }
+              ]);
+      
+              if (error) {
 
-    localStorage.setItem(
-      "careerpilot_user",
-      JSON.stringify(user)
-    );
-
-    alert(
-      "Registration Successful!"
-    );
-
-    router.push("/login");
-  }
+                console.log("SUPABASE ERROR:");
+                console.log(JSON.stringify(error, null, 2));
+              
+                alert(error.message);
+              
+                return;
+              }
+      
+          alert(
+            "Registration Successful!"
+          );
+      
+          router.push("/login");
+      
+        } catch (error) {
+      
+          console.error(error);
+      
+          alert(
+            "Something went wrong"
+          );
+        }
+      }
 
   return (
     <main className="min-h-screen bg-[#050816] text-white flex items-center justify-center">

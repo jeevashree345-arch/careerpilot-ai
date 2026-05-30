@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { supabase } from "@/lib/supabase";
 export default function LoginPage() {
 
   const router = useRouter();
@@ -16,55 +16,61 @@ export default function LoginPage() {
   const [password, setPassword] =
     useState("");
 
-    function handleLogin() {
+    async function handleLogin() {
 
-        const storedUser =
-          JSON.parse(
-            localStorage.getItem(
-              "careerpilot_user"
-            )
+        try {
+      
+          const { data, error } =
+            await supabase
+              .from("users")
+              .select("*")
+              .eq("email", email)
+              .single();
+      
+          if (error || !data) {
+      
+            alert(
+              "User not found"
+            );
+      
+            return;
+          }
+      
+          if (
+            data.password !== password
+          ) {
+      
+            alert(
+              "Invalid credentials"
+            );
+      
+            return;
+          }
+      
+          localStorage.setItem(
+            "loggedInUser",
+            JSON.stringify(data)
           );
       
-        if (!storedUser) {
+          if (
+            data.profile ===
+            "Career Explorer"
+          ) {
+      
+            router.push("/roadmap");
+      
+          } else {
+      
+            router.push("/dashboard");
+          }
+      
+        } catch (error) {
+      
+          console.error(error);
       
           alert(
-            "Please register first."
+            "Login failed"
           );
-      
-          return;
-        }
-        console.log("Stored Email:", storedUser.email);
-        console.log("Entered Email:", email);
-        
-        console.log("Stored Password:", storedUser.password);
-        console.log("Entered Password:", password);
-        if (
-          storedUser.email !== email ||
-          storedUser.password !== password
-        ) {
-      
-          alert(
-            "Invalid credentials"
-          );
-      
-          return;
-        }
-      
-        localStorage.setItem(
-          "profileType",
-          storedUser.profile
-        );
-      
-        if (
-          storedUser.profile ===
-          "Career Explorer"
-        ) {
-      
-          router.push("/roadmap");
-      
-        } else {
-      
-          router.push("/dashboard");
         }
       }
 

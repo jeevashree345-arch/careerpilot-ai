@@ -19,7 +19,7 @@ export default function RoadmapPage() {
 
         const storedUser =
           localStorage.getItem(
-            "careerpilot_user"
+            "loggedInUser"
           );
     
         if (!storedUser) {
